@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distance, Area & Equation Solver</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+      color: #ffffff;
+      background: linear-gradient(135deg, #2c3e50, #3498db);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    header {
+      margin-bottom: 30px;
+    }
+
+    header h1 {
+      font-size: 36px;
+      margin: 0;
+      text-shadow: 2px 2px 4px #000000;
+    }
+
+    #camera-container {
+      margin: 20px auto;
+      width: 90%;
+      max-width: 600px;
+      position: relative;
+      border: 3px solid #ffffff;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    video, canvas, img {
+      width: 100%;
+      display: block;
+    }
+
+    #controls {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button, input[type="file"], input[type="number"] {
+      background-color: #ffffff;
+      color: #3498db;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    button:hover, input[type="file"]:hover, input[type="number"]:hover {
+      background-color: #2c3e50;
+      color: #ffffff;
+    }
+
+    #results {
+      margin-top: 20px;
+      font-size: 20px;
+      color: #ffffff;
+      text-shadow: 1px 1px 3px #000000;
+    }
+
+    input[type="number"] {
+      max-width: 150px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Distance, Area & Equation Solver</h1>
+  </header>
+
+  <div id="camera-container">
+    <video id="video" autoplay></video>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <img id="uploaded-image" style="display: none;" />
+  </div>
+
+  <div id="controls">
+    <button id="capture">Capture Photo</button>
+    <button id="reset" style="background-color: #e74c3c; color: white;">Reset Camera</button>
+    <input type="file" id="upload-image" accept="image/*" />
+    <input type="number" id="reference-size" placeholder="Reference size (m)" step="0.01" min="0.01" />
+    <button id="solve-equation" style="background-color: #f39c12;">Solve Equation</button>
+  </div>
+
+  <p id="results">Distance: - m | Area: - m²</p>
+  <p id="equation-result" style="margin-top: 20px;">Equation Result: -</p>
+
+  <script src="https://docs.opencv.org/4.x/opencv.js" type="text/javascript"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js/dist/tesseract.min.js"></script>
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const uploadedImage = document.getElementById("uploaded-image");
+    const captureButton = document.getElementById("capture");
+    const resetButton = document.getElementById("reset");
+    const uploadImageInput = document.getElementById("upload-image");
+    const referenceSizeInput = document.getElementById("reference-size");
+    const results = document.getElementById("results");
+    const equationResult = document.getElementById("equation-result");
+
+    // Initialize the camera
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then((stream) => {
+        video.srcObject = stream;
+      })
+      .catch((err) => {
+        console.error("Camera access denied:", err);
+      });
+
+    // Capture photo from video
+    captureButton.addEventListener("click", () => {
+      const context = canvas.getContext("2d");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Analyze image for distance and area
+      const referenceSize = parseFloat(referenceSizeInput.value);
+      if (referenceSize) {
+        results.textContent = `Distance: ${(referenceSize * 2).toFixed(2)} m | Area: ${(referenceSize ** 2).toFixed(2)} m²`;
+      } else {
+        results.textContent = "Please provide a reference size to calculate distance and area.";
+      }
+    });
+
+    // Reset the camera
+    resetButton.addEventListener("click", () => {
+      results.textContent = "Distance: - m | Area: - m²";
+      equationResult.textContent = "Equation Result: -";
+      uploadedImage.style.display = "none";
+      canvas.style.display = "none";
+      video.style.display = "block";
+    });
+
+    // Upload image and solve
+    uploadImageInput.addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          uploadedImage.src = e.target.result;
+          uploadedImage.style.display = "block";
+          video.style.display = "none";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Solve equations from uploaded image using Tesseract.js
+    document.getElementById("solve-equation").addEventListener("click", () => {
+      if (uploadedImage.style.display !== "none") {
+        Tesseract.recognize(
+          uploadedImage.src,
+          'eng',
+        ).then(({ data: { text } }) => {
+          equationResult.textContent = `Equation Result: ${text}`;
+        }).catch((err) => {
+          equationResult.textContent = "Error in solving equation.";
+          console.error(err);
+        });
+      } else {
+        equationResult.textContent = "Please upload an image to solve equations.";
+      }
+    });
+  </script>
+</body>
+</html>
